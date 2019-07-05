@@ -4,7 +4,7 @@ android {
     compileSdkVersion 29
     buildToolsVersion "29.0.0"
     defaultConfig {
-        applicationId "com.wsy.camera2demo"
+        applicationId "com.arcsoft.camera2demo"
         minSdkVersion 21
         targetSdkVersion 29
         versionCode 1
