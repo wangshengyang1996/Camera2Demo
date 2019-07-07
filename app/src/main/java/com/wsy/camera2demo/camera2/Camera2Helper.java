@@ -231,18 +231,17 @@ public class Camera2Helper {
                 Image.Plane[] planes = image.getPlanes();
                 // 加锁确保y、u、v来源于同一个Image
                 lock.lock();
-                //重复使用同一批byte数组，减少gc频率
+                // 重复使用同一批byte数组，减少gc频率
                 if (y == null) {
                     y = new byte[planes[0].getBuffer().limit() - planes[0].getBuffer().position()];
                     u = new byte[planes[1].getBuffer().limit() - planes[1].getBuffer().position()];
                     v = new byte[planes[2].getBuffer().limit() - planes[2].getBuffer().position()];
-                    Log.i(TAG, "onImageAvailable: " + y.length + " " + u.length + " " + v.length);
                 }
                 planes[0].getBuffer().get(y);
                 planes[1].getBuffer().get(u);
                 planes[2].getBuffer().get(v);
+                camera2Listener.onPreview(y, u, v, mPreviewSize, planes[0].getRowStride());
                 lock.unlock();
-                camera2Listener.onPreview(y, u, v, mPreviewSize);
             }
             image.close();
         }
@@ -266,13 +265,7 @@ public class Camera2Helper {
     private int mSensorOrientation;
 
     private Size getBestSupportedSize(List<Size> sizes) {
-        for (int i = sizes.size() - 1; i >= 0; i--) {
-            Size size = sizes.get(i);
-            if (size.getWidth() > MAX_PREVIEW_WIDTH || size.getHeight() > MAX_PREVIEW_HEIGHT
-                    || size.getWidth() < MIN_PREVIEW_WIDTH || size.getHeight() < MIN_PREVIEW_HEIGHT) {
-                sizes.remove(i);
-            }
-        }
+
         Size[] tempSizes = sizes.toArray(new Size[0]);
         Arrays.sort(tempSizes, new Comparator<Size>() {
             @Override
@@ -303,6 +296,10 @@ public class Camera2Helper {
         for (Size s : sizes) {
             if (specificPreviewSize != null && specificPreviewSize.x == s.getWidth() && specificPreviewSize.y == s.getHeight()) {
                 return s;
+            }
+            if (s.getWidth() > MAX_PREVIEW_WIDTH || s.getHeight() > MAX_PREVIEW_HEIGHT
+                    || s.getWidth() < MIN_PREVIEW_WIDTH || s.getHeight() < MIN_PREVIEW_HEIGHT) {
+                continue;
             }
             if (Math.abs((s.getHeight() / (float) s.getWidth()) - previewViewRatio) < Math.abs(bestSize.getHeight() / (float) bestSize.getWidth() - previewViewRatio)) {
                 bestSize = s;

@@ -29,7 +29,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import com.wsy.camera2demo.camera2.Camera2Helper;
 import com.wsy.camera2demo.camera2.Camera2Listener;
 import com.wsy.camera2demo.util.ImageUtil;
@@ -153,11 +152,10 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
     @Override
     public void onCameraOpened(CameraDevice cameraDevice, String cameraId, final Size previewSize, final int displayOrientation, boolean isMirror) {
         Log.i(TAG, "onCameraOpened:  previewSize = " + previewSize.getWidth() + "x" + previewSize.getHeight());
-        this.nv21 = new byte[previewSize.getWidth() * previewSize.getHeight() * 3 / 2];
         this.displayOrientation = displayOrientation;
         this.isMirrorPreview = isMirror;
         this.openedCameraId = cameraId;
-        //在相机打开时，添加右上角的view用于显示显示原始数据和预览数据
+        //在相机打开时，添加右上角的view用于显示原始数据和预览数据
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -167,8 +165,8 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
                 TextView tvOrigin = new TextView(MainActivity.this);
                 tvPreview.setTextColor(Color.WHITE);
                 tvOrigin.setTextColor(Color.WHITE);
-                tvPreview.setText("preview");
-                tvOrigin.setText("origin");
+                tvPreview.setText(R.string.tag_preview);
+                tvOrigin.setText(R.string.tag_origin);
                 boolean needRotate = displayOrientation % 180 != 0;
                 FrameLayout.LayoutParams previewLayoutParams = new FrameLayout.LayoutParams(
                         !needRotate ? previewSize.getWidth() / 4 : previewSize.getHeight() / 4,
@@ -195,30 +193,42 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
 
 
     @Override
-    public void onPreview(final byte[] y, final byte[] u, final byte[] v, final Size previewSize) {
+    public void onPreview(final byte[] y, final byte[] u, final byte[] v, final Size previewSize, final int stride) {
         if (currentIndex++ % PROCESS_INTERVAL == 0) {
             imageProcessExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    ImageUtil.yuv422ToYuv420sp(y, u, v, nv21);
-                    YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, previewSize.getWidth(), previewSize.getHeight(), null);
+                    if (nv21 == null) {
+                        nv21 = new byte[stride * previewSize.getHeight() * 3 / 2];
+                    }
+                    ImageUtil.yuv422ToYuv420sp(y, u, v, nv21, stride, previewSize.getHeight());
+                    YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, stride, previewSize.getHeight(), new int[]{stride, stride, stride});
                     // ByteArrayOutputStream的close中其实没做任何操作，可不执行
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    yuvImage.compressToJpeg(new Rect(0, 0, previewSize.getWidth(), previewSize.getHeight()), 100, byteArrayOutputStream);
+
+                    // 由于某些stride和previewWidth差距大的设备，previewWidth后补上的U、V均为0，因此会看到明显的绿边
+//                    yuvImage.compressToJpeg(new Rect(0, 0, stride, previewSize.getHeight()), 100, byteArrayOutputStream);
+
+                    // 由于U和V一般都少了一个，因此若使用方式，会有个宽度为1像素的绿边
+//                    yuvImage.compressToJpeg(new Rect(0, 0, previewSize.getWidth(), previewSize.getHeight()), 100, byteArrayOutputStream);
+
+                    // 为了删除绿边，抛弃一行像素
+                    yuvImage.compressToJpeg(new Rect(0, 0, previewSize.getWidth() - 1, previewSize.getHeight()), 100, byteArrayOutputStream);
+
                     byte[] jpgBytes = byteArrayOutputStream.toByteArray();
                     BitmapFactory.Options options = new BitmapFactory.Options();
                     options.inSampleSize = 4;
-                    //原始预览数据生成的bitmap
+                    // 原始预览数据生成的bitmap
                     final Bitmap originalBitmap = BitmapFactory.decodeByteArray(jpgBytes, 0, jpgBytes.length, options);
                     Matrix matrix = new Matrix();
-                    //由于之前已经旋转了，需要转回原来的数据
+                    // 由于之前已经旋转了，需要转回原来的数据
                     matrix.postRotate(Camera2Helper.CAMERA_ID_BACK.equals(openedCameraId) ? displayOrientation : -displayOrientation);
 
-                    //对于前置数据，镜像处理；若手动设置镜像预览，则镜像处理。若都有，则不需要镜像处理，因此是异或关系
+                    // 对于前置数据，镜像处理；若手动设置镜像预览，则镜像处理；若都有，则不需要镜像处理
                     if (Camera2Helper.CAMERA_ID_FRONT.equals(openedCameraId) ^ isMirrorPreview) {
                         matrix.postScale(-1, 1);
                     }
-                    //和预览画面相同的bitmap
+                    // 和预览画面相同的bitmap
                     final Bitmap previewBitmap = Bitmap.createBitmap(originalBitmap, 0, 0, originalBitmap.getWidth(), originalBitmap.getHeight(), matrix, false);
                     runOnUiThread(new Runnable() {
                         @Override
@@ -234,12 +244,12 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
 
     @Override
     public void onCameraClosed() {
-
+        Log.i(TAG, "onCameraClosed: ");
     }
 
     @Override
     public void onCameraError(Exception e) {
-
+        e.printStackTrace();
     }
 
     @Override

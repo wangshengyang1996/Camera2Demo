@@ -20,8 +20,9 @@ public interface Camera2Listener {
      * @param u 预览数据，U分量
      * @param v 预览数据，V分量
      * @param previewSize  预览尺寸
+     * @param stride    步长
      */
-    void onPreview(byte[] y, byte[] u, byte[] v, Size previewSize);
+    void onPreview(byte[] y, byte[] u, byte[] v, Size previewSize, int stride);
 
     /**
      * 当相机关闭时执行
