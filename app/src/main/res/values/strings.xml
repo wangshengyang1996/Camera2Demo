@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Camera2Demo</string>
+    <string name="tag_preview">preview</string>
+    <string name="tag_origin">origin</string>
 </resources>
