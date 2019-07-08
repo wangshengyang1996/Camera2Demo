@@ -13,6 +13,7 @@ public class ImageUtil {
      */
     public static void yuv422ToYuv420sp(byte[] y, byte[] u, byte[] v, byte[] nv21, int stride, int height) {
         System.arraycopy(y, 0, nv21, 0, y.length);
+        // 注意，若length值为 y.length * 3 / 2 会有数组越界的风险，需使用真实数据长度计算
         int length = y.length + u.length / 2 + v.length / 2;
         int uIndex = 0, vIndex = 0;
         for (int i = stride * height; i < length; i += 2) {
@@ -35,6 +36,7 @@ public class ImageUtil {
      */
     public static void yuv420ToYuv420sp(byte[] y, byte[] u, byte[] v, byte[] nv21, int stride, int height) {
         System.arraycopy(y, 0, nv21, 0, y.length);
+        // 注意，若length值为 y.length * 3 / 2 会有数组越界的风险，需使用真实数据长度计算
         int length = y.length + u.length + v.length;
         int uIndex = 0, vIndex = 0;
         for (int i = stride * height; i < length; i++) {
