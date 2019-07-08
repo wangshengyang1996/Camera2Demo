@@ -1,6 +1,5 @@
 package com.wsy.camera2demo.camera2;
 
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -53,7 +52,7 @@ public class Camera2Helper {
     private Point previewViewSize;
     private Point specificPreviewSize;
     private boolean isMirror;
-    private Activity activity;
+    private Context context;
     /**
      * A {@link CameraCaptureSession } for camera preview.
      */
@@ -74,7 +73,7 @@ public class Camera2Helper {
         previewViewSize = builder.previewViewSize;
         specificPreviewSize = builder.previewSize;
         isMirror = builder.isMirror;
-        activity = builder.activity;
+        context = builder.context;
         if (isMirror) {
             mTextureView.setScaleX(-1);
         }
@@ -337,7 +336,7 @@ public class Camera2Helper {
         stop();
         mTextureView = null;
         camera2Listener = null;
-        activity = null;
+        context = null;
     }
 
     private void setUpCameraOutputs(CameraManager cameraManager) {
@@ -387,7 +386,7 @@ public class Camera2Helper {
      * Opens the camera specified by {@link #mCameraId}.
      */
     private void openCamera() {
-        CameraManager cameraManager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
+        CameraManager cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         setUpCameraOutputs(cameraManager);
         configureTransform(mTextureView.getWidth(), mTextureView.getHeight());
         try {
@@ -557,9 +556,9 @@ public class Camera2Helper {
         private Point previewSize;
 
         /**
-         * 额外的旋转角度（用于适配一些定制设备）
+         * 上下文，用于获取CameraManager
          */
-        private Activity activity;
+        private Context context;
 
         public Builder() {
         }
@@ -602,8 +601,8 @@ public class Camera2Helper {
             return this;
         }
 
-        public Builder activity(Activity val) {
-            activity = val;
+        public Builder context(Context val) {
+            context = val;
             return this;
         }
 
