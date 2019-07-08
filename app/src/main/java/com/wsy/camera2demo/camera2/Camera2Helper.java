@@ -78,7 +78,15 @@ public class Camera2Helper {
             mTextureView.setScaleX(-1);
         }
     }
-
+    public void switchCamera(){
+        if (CAMERA_ID_BACK.equals(mCameraId)){
+            specificCameraId = CAMERA_ID_FRONT;
+        }else if (CAMERA_ID_FRONT.equals(mCameraId)){
+            specificCameraId = CAMERA_ID_BACK;
+        }
+        stop();
+        start();
+    }
     private int getCameraOri(int rotation, String cameraId) {
         int degrees = rotation * 90;
         switch (rotation) {
@@ -215,36 +223,6 @@ public class Camera2Helper {
 
     private ImageReader mImageReader;
 
-    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
-            = new ImageReader.OnImageAvailableListener() {
-        private byte[] y;
-        private byte[] u;
-        private byte[] v;
-        private ReentrantLock lock = new ReentrantLock();
-
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-            Image image = reader.acquireNextImage();
-            //Y : U : V = 4 :2 :2
-            if (camera2Listener != null && image.getFormat() == ImageFormat.YUV_420_888) {
-                Image.Plane[] planes = image.getPlanes();
-                // 加锁确保y、u、v来源于同一个Image
-                lock.lock();
-                // 重复使用同一批byte数组，减少gc频率
-                if (y == null) {
-                    y = new byte[planes[0].getBuffer().limit() - planes[0].getBuffer().position()];
-                    u = new byte[planes[1].getBuffer().limit() - planes[1].getBuffer().position()];
-                    v = new byte[planes[2].getBuffer().limit() - planes[2].getBuffer().position()];
-                }
-                planes[0].getBuffer().get(y);
-                planes[1].getBuffer().get(u);
-                planes[2].getBuffer().get(v);
-                camera2Listener.onPreview(y, u, v, mPreviewSize, planes[0].getRowStride());
-                lock.unlock();
-            }
-            image.close();
-        }
-    };
 
     /**
      * {@link CaptureRequest.Builder} for the camera preview
@@ -374,7 +352,7 @@ public class Camera2Helper {
         mImageReader = ImageReader.newInstance(mPreviewSize.getWidth(), mPreviewSize.getHeight(),
                 ImageFormat.YUV_420_888, 2);
         mImageReader.setOnImageAvailableListener(
-                mOnImageAvailableListener, mBackgroundHandler);
+                new OnImageAvailableListener(), mBackgroundHandler);
 
         //noinspection ConstantConditions
         mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
@@ -617,6 +595,39 @@ public class Camera2Helper {
                 throw new RuntimeException("you must preview on a textureView or a surfaceView");
             }
             return new Camera2Helper(this);
+        }
+    }
+
+    class OnImageAvailableListener implements ImageReader.OnImageAvailableListener {
+        private byte[] y;
+        private byte[] u;
+        private byte[] v;
+        private ReentrantLock lock = new ReentrantLock();
+
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+            Log.i(TAG, "onImageAvailable: ");
+            Image image = reader.acquireNextImage();
+            //Y : U : V = 4 :2 :2
+            if (camera2Listener != null && image.getFormat() == ImageFormat.YUV_420_888 ) {
+                Image.Plane[] planes = image.getPlanes();
+                // 加锁确保y、u、v来源于同一个Image
+                lock.lock();
+                // 重复使用同一批byte数组，减少gc频率
+                if (y == null) {
+                    y = new byte[planes[0].getBuffer().limit() - planes[0].getBuffer().position()];
+                    u = new byte[planes[1].getBuffer().limit() - planes[1].getBuffer().position()];
+                    v = new byte[planes[2].getBuffer().limit() - planes[2].getBuffer().position()];
+                }
+                if (image.getPlanes()[0].getBuffer().remaining() == y.length){
+                    planes[0].getBuffer().get(y);
+                    planes[1].getBuffer().get(u);
+                    planes[2].getBuffer().get(v);
+                    camera2Listener.onPreview(y, u, v, mPreviewSize, planes[0].getRowStride());
+                }
+                lock.unlock();
+            }
+            image.close();
         }
     }
 }

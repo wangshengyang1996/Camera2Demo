@@ -18,10 +18,12 @@ import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.camera2.CameraDevice;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
 import android.view.Gravity;
 import android.view.TextureView;
+import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -42,27 +44,27 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
     private static final int ACTION_REQUEST_PERMISSIONS = 1;
     private Camera2Helper camera2Helper;
     private TextureView textureView;
-    //用于显示原始预览数据
+    // 用于显示原始预览数据
     private ImageView ivOriginFrame;
-    //用于显示和预览画面相同的图像数据
+    // 用于显示和预览画面相同的图像数据
     private ImageView ivPreviewFrame;
-    //默认打开的CAMERA
+    // 默认打开的CAMERA
     private static final String CAMERA_ID = Camera2Helper.CAMERA_ID_BACK;
-    //图像帧数据，全局变量避免反复创建，降低gc频率
+    // 图像帧数据，全局变量避免反复创建，降低gc频率
     private byte[] nv21;
-    //显示的旋转角度
+    // 显示的旋转角度
     private int displayOrientation;
-    //是否手动镜像预览
+    // 是否手动镜像预览
     private boolean isMirrorPreview;
-    //实际打开的cameraId
+    // 实际打开的cameraId
     private String openedCameraId;
-    //当前获取的帧数
+    // 当前获取的帧数
     private int currentIndex = 0;
-    //处理的间隔帧
+    // 处理的间隔帧
     private static final int PROCESS_INTERVAL = 30;
-    //线程池
+    // 线程池
     private ExecutorService imageProcessExecutor;
-    //需要的权限
+    // 需要的权限
     private static final String[] NEEDED_PERMISSIONS = new String[]{
             Manifest.permission.CAMERA
     };
@@ -168,12 +170,17 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
                 tvPreview.setText(R.string.tag_preview);
                 tvOrigin.setText(R.string.tag_origin);
                 boolean needRotate = displayOrientation % 180 != 0;
+                DisplayMetrics displayMetrics = new DisplayMetrics();
+                getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+                int longSide = displayMetrics.widthPixels > displayMetrics.heightPixels ? displayMetrics.widthPixels : displayMetrics.heightPixels;
+                int shortSide = displayMetrics.widthPixels < displayMetrics.heightPixels ? displayMetrics.widthPixels : displayMetrics.heightPixels;
+
                 FrameLayout.LayoutParams previewLayoutParams = new FrameLayout.LayoutParams(
-                        !needRotate ? previewSize.getWidth() / 4 : previewSize.getHeight() / 4,
-                        needRotate ? previewSize.getWidth() / 4 : previewSize.getHeight() / 4
+                        !needRotate ? longSide / 4 : shortSide / 4,
+                        needRotate ? longSide / 4 : shortSide / 4
                 );
                 FrameLayout.LayoutParams originLayoutParams = new FrameLayout.LayoutParams(
-                        previewSize.getWidth() / 4, previewSize.getHeight() / 4
+                        longSide / 4, shortSide / 4
                 );
                 previewLayoutParams.gravity = Gravity.END | Gravity.TOP;
                 originLayoutParams.gravity = Gravity.END | Gravity.TOP;
@@ -206,14 +213,14 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
                     // ByteArrayOutputStream的close中其实没做任何操作，可不执行
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-                    // 由于某些stride和previewWidth差距大的设备，previewWidth后补上的U、V均为0，因此会看到明显的绿边
+                    // 由于某些stride和previewWidth差距大的分辨率，[0,previewWidth)是有数据的，而[previewWidth,stride)补上的U、V均为0，因此在这种情况下运行会看到明显的绿边
 //                    yuvImage.compressToJpeg(new Rect(0, 0, stride, previewSize.getHeight()), 100, byteArrayOutputStream);
 
-                    // 由于U和V一般都少了一个，因此若使用方式，会有个宽度为1像素的绿边
-//                    yuvImage.compressToJpeg(new Rect(0, 0, previewSize.getWidth(), previewSize.getHeight()), 100, byteArrayOutputStream);
+                    // 由于U和V一般都有缺损，因此若使用方式，可能会有个宽度为1像素的绿边
+                    yuvImage.compressToJpeg(new Rect(0, 0, previewSize.getWidth(), previewSize.getHeight()), 100, byteArrayOutputStream);
 
                     // 为了删除绿边，抛弃一行像素
-                    yuvImage.compressToJpeg(new Rect(0, 0, previewSize.getWidth() - 1, previewSize.getHeight()), 100, byteArrayOutputStream);
+//                    yuvImage.compressToJpeg(new Rect(0, 0, previewSize.getWidth() - 1, previewSize.getHeight()), 100, byteArrayOutputStream);
 
                     byte[] jpgBytes = byteArrayOutputStream.toByteArray();
                     BitmapFactory.Options options = new BitmapFactory.Options();
@@ -262,5 +269,11 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
             camera2Helper.release();
         }
         super.onDestroy();
+    }
+
+    public void switchCamera(View view) {
+        if (camera2Helper!=null){
+            camera2Helper.switchCamera();
+        }
     }
 }
