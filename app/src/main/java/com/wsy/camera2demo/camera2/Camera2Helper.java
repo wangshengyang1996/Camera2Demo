@@ -370,7 +370,7 @@ public class Camera2Helper {
         mImageReader = ImageReader.newInstance(mPreviewSize.getWidth(), mPreviewSize.getHeight(),
                 ImageFormat.YUV_420_888, 2);
         mImageReader.setOnImageAvailableListener(
-                new OnImageAvailableListener(), mBackgroundHandler);
+                new OnImageAvailableListenerImpl(), mBackgroundHandler);
 
         mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         mCameraId = cameraId;
@@ -634,7 +634,7 @@ public class Camera2Helper {
         }
     }
 
-    class OnImageAvailableListener implements ImageReader.OnImageAvailableListener {
+    private class OnImageAvailableListenerImpl implements ImageReader.OnImageAvailableListener {
         private byte[] y;
         private byte[] u;
         private byte[] v;
@@ -643,7 +643,7 @@ public class Camera2Helper {
         @Override
         public void onImageAvailable(ImageReader reader) {
             Image image = reader.acquireNextImage();
-            //Y : U : V = 4 :2 :2
+            // Y:U:V == 4:2:2
             if (camera2Listener != null && image.getFormat() == ImageFormat.YUV_420_888) {
                 Image.Plane[] planes = image.getPlanes();
                 // 加锁确保y、u、v来源于同一个Image
