@@ -420,12 +420,17 @@ public class Camera2Helper {
                 mCameraDevice.close();
                 mCameraDevice = null;
             }
+            if (camera2Listener != null) {
+                camera2Listener.onCameraClosed();
+            }
             if (null != mImageReader) {
                 mImageReader.close();
                 mImageReader = null;
             }
         } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while trying to lock camera closing.", e);
+            if (camera2Listener != null) {
+                camera2Listener.onCameraError(e);
+            }
         } finally {
             mCameraOpenCloseLock.release();
         }
