@@ -37,7 +37,7 @@ public class ImageUtil {
     public static void yuv420ToYuv420sp(byte[] y, byte[] u, byte[] v, byte[] nv21, int stride, int height) {
         System.arraycopy(y, 0, nv21, 0, y.length);
         int nv21UVIndex = stride * height;
-        int length = y.length + u.length / 4 + v.length / 4;
+        int length = y.length + u.length + v.length;
         int uIndex = 0, vIndex = 0;
         for (int i = nv21UVIndex; i < length; i++) {
             nv21[i] = v[vIndex++];
