@@ -82,7 +82,6 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
     private void initView() {
         textureView = findViewById(R.id.texture_preview);
         textureView.getViewTreeObserver().addOnGlobalLayoutListener(this);
-
     }
 
     private boolean checkPermissions(String[] neededPermissions) {
@@ -99,8 +98,8 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
     void initCamera() {
         camera2Helper = new Camera2Helper.Builder()
                 .cameraListener(this)
-                .maxPreviewSize(new Point(1920,1080))
-                .minPreviewSize(new Point(1280,720))
+                .maxPreviewSize(new Point(1920, 1080))
+                .minPreviewSize(new Point(1280, 720))
                 .specificCameraId(CAMERA_ID)
                 .context(getApplicationContext())
                 .previewOn(textureView)
@@ -210,7 +209,14 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
                     if (nv21 == null) {
                         nv21 = new byte[stride * previewSize.getHeight() * 3 / 2];
                     }
-                    ImageUtil.yuv422ToYuv420sp(y, u, v, nv21, stride, previewSize.getHeight());
+                    // 回传数据是YUV422
+                    if (y.length / u.length == 2) {
+                        ImageUtil.yuv422ToYuv420sp(y, u, v, nv21, stride, previewSize.getHeight());
+                    }
+                    // 回传数据是YUV420
+                    else if (y.length / u.length == 4) {
+                        ImageUtil.yuv420ToYuv420sp(y, u, v, nv21, stride, previewSize.getHeight());
+                    }
                     YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, stride, previewSize.getHeight(), new int[]{stride, stride, stride});
                     // ByteArrayOutputStream的close中其实没做任何操作，可不执行
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -274,7 +280,7 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
     }
 
     public void switchCamera(View view) {
-        if (camera2Helper!=null){
+        if (camera2Helper != null) {
             camera2Helper.switchCamera();
         }
     }
