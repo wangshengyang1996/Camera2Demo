@@ -99,6 +99,8 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
     void initCamera() {
         camera2Helper = new Camera2Helper.Builder()
                 .cameraListener(this)
+                .maxPreviewSize(new Point(1920,1080))
+                .minPreviewSize(new Point(1280,720))
                 .specificCameraId(CAMERA_ID)
                 .context(getApplicationContext())
                 .previewOn(textureView)

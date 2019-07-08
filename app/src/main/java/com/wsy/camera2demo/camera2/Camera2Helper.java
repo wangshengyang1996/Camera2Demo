@@ -35,10 +35,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Camera2Helper {
     private static final String TAG = "Camera2Helper";
 
-    private static final int MAX_PREVIEW_WIDTH = 1920;
-    private static final int MAX_PREVIEW_HEIGHT = 1080;
-    private static final int MIN_PREVIEW_WIDTH = 720;
-    private static final int MIN_PREVIEW_HEIGHT = 720;
+    private Point maxPreviewSize;
+    private Point minPreviewSize;
 
     public static final String CAMERA_ID_FRONT = "1";
     public static final String CAMERA_ID_BACK = "0";
@@ -72,21 +70,25 @@ public class Camera2Helper {
         rotation = builder.rotation;
         previewViewSize = builder.previewViewSize;
         specificPreviewSize = builder.previewSize;
+        maxPreviewSize = builder.maxPreviewSize;
+        minPreviewSize = builder.minPreviewSize;
         isMirror = builder.isMirror;
         context = builder.context;
         if (isMirror) {
             mTextureView.setScaleX(-1);
         }
     }
-    public void switchCamera(){
-        if (CAMERA_ID_BACK.equals(mCameraId)){
+
+    public void switchCamera() {
+        if (CAMERA_ID_BACK.equals(mCameraId)) {
             specificCameraId = CAMERA_ID_FRONT;
-        }else if (CAMERA_ID_FRONT.equals(mCameraId)){
+        } else if (CAMERA_ID_FRONT.equals(mCameraId)) {
             specificCameraId = CAMERA_ID_BACK;
         }
         stop();
         start();
     }
+
     private int getCameraOri(int rotation, String cameraId) {
         int degrees = rotation * 90;
         switch (rotation) {
@@ -242,7 +244,7 @@ public class Camera2Helper {
     private int mSensorOrientation;
 
     private Size getBestSupportedSize(List<Size> sizes) {
-
+        Size defaultSize = sizes.get(0);
         Size[] tempSizes = sizes.toArray(new Size[0]);
         Arrays.sort(tempSizes, new Comparator<Size>() {
             @Override
@@ -256,8 +258,28 @@ public class Camera2Helper {
                 }
             }
         });
-        sizes = Arrays.asList(tempSizes);
-
+        sizes = new ArrayList<>(Arrays.asList(tempSizes));
+        for (int i = sizes.size() - 1; i >= 0; i--) {
+            if (maxPreviewSize != null) {
+                if (sizes.get(i).getWidth() > maxPreviewSize.x || sizes.get(i).getHeight() > maxPreviewSize.y) {
+                    sizes.remove(i);
+                    continue;
+                }
+            }
+            if (minPreviewSize != null) {
+                if (sizes.get(i).getWidth() < minPreviewSize.x || sizes.get(i).getHeight() < minPreviewSize.y) {
+                    sizes.remove(i);
+                }
+            }
+        }
+        if (sizes.size() == 0) {
+            String msg = "can not find suitable previewSize, now using default";
+            if (camera2Listener != null) {
+                Log.e(TAG, msg);
+                camera2Listener.onCameraError(new Exception(msg));
+            }
+            return defaultSize;
+        }
         Size bestSize = sizes.get(0);
         float previewViewRatio;
         if (previewViewSize != null) {
@@ -273,10 +295,6 @@ public class Camera2Helper {
         for (Size s : sizes) {
             if (specificPreviewSize != null && specificPreviewSize.x == s.getWidth() && specificPreviewSize.y == s.getHeight()) {
                 return s;
-            }
-            if (s.getWidth() > MAX_PREVIEW_WIDTH || s.getHeight() > MAX_PREVIEW_HEIGHT
-                    || s.getWidth() < MIN_PREVIEW_WIDTH || s.getHeight() < MIN_PREVIEW_HEIGHT) {
-                continue;
             }
             if (Math.abs((s.getHeight() / (float) s.getWidth()) - previewViewRatio) < Math.abs(bestSize.getHeight() / (float) bestSize.getWidth() - previewViewRatio)) {
                 bestSize = s;
@@ -354,15 +372,11 @@ public class Camera2Helper {
         mImageReader.setOnImageAvailableListener(
                 new OnImageAvailableListener(), mBackgroundHandler);
 
-        //noinspection ConstantConditions
         mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         mCameraId = cameraId;
         return true;
     }
 
-    /**
-     * Opens the camera specified by {@link #mCameraId}.
-     */
     private void openCamera() {
         CameraManager cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         setUpCameraOutputs(cameraManager);
@@ -532,7 +546,14 @@ public class Camera2Helper {
          * 指定的预览宽高，若系统支持则会以这个预览宽高进行预览
          */
         private Point previewSize;
-
+        /**
+         * 最大分辨率
+         */
+        private Point maxPreviewSize;
+        /**
+         * 最小分辨率
+         */
+        private Point minPreviewSize;
         /**
          * 上下文，用于获取CameraManager
          */
@@ -555,6 +576,16 @@ public class Camera2Helper {
 
         public Builder previewSize(Point val) {
             previewSize = val;
+            return this;
+        }
+
+        public Builder maxPreviewSize(Point val) {
+            maxPreviewSize = val;
+            return this;
+        }
+
+        public Builder minPreviewSize(Point val) {
+            minPreviewSize = val;
             return this;
         }
 
@@ -592,7 +623,12 @@ public class Camera2Helper {
                 Log.e(TAG, "camera2Listener is null, callback will not be called");
             }
             if (previewDisplayView == null) {
-                throw new RuntimeException("you must preview on a textureView or a surfaceView");
+                throw new NullPointerException("you must preview on a textureView or a surfaceView");
+            }
+            if (maxPreviewSize != null && minPreviewSize != null) {
+                if (maxPreviewSize.x < minPreviewSize.x || maxPreviewSize.y < minPreviewSize.y) {
+                    throw new IllegalArgumentException("maxPreviewSize must greater than minPreviewSize");
+                }
             }
             return new Camera2Helper(this);
         }
@@ -606,10 +642,9 @@ public class Camera2Helper {
 
         @Override
         public void onImageAvailable(ImageReader reader) {
-            Log.i(TAG, "onImageAvailable: ");
             Image image = reader.acquireNextImage();
             //Y : U : V = 4 :2 :2
-            if (camera2Listener != null && image.getFormat() == ImageFormat.YUV_420_888 ) {
+            if (camera2Listener != null && image.getFormat() == ImageFormat.YUV_420_888) {
                 Image.Plane[] planes = image.getPlanes();
                 // 加锁确保y、u、v来源于同一个Image
                 lock.lock();
@@ -619,7 +654,7 @@ public class Camera2Helper {
                     u = new byte[planes[1].getBuffer().limit() - planes[1].getBuffer().position()];
                     v = new byte[planes[2].getBuffer().limit() - planes[2].getBuffer().position()];
                 }
-                if (image.getPlanes()[0].getBuffer().remaining() == y.length){
+                if (image.getPlanes()[0].getBuffer().remaining() == y.length) {
                     planes[0].getBuffer().get(y);
                     planes[1].getBuffer().get(u);
                     planes[2].getBuffer().get(v);
