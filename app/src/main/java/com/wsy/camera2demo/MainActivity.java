@@ -162,8 +162,8 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                ivPreviewFrame = new ImageView(MainActivity.this);
-                ivOriginFrame = new ImageView(MainActivity.this);
+                ivPreviewFrame = new BorderImageView(MainActivity.this);
+                ivOriginFrame = new BorderImageView(MainActivity.this);
                 TextView tvPreview = new TextView(MainActivity.this);
                 TextView tvOrigin = new TextView(MainActivity.this);
                 tvPreview.setTextColor(Color.WHITE);
