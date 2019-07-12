@@ -236,7 +236,7 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
                     // 原始预览数据生成的bitmap
                     final Bitmap originalBitmap = BitmapFactory.decodeByteArray(jpgBytes, 0, jpgBytes.length, options);
                     Matrix matrix = new Matrix();
-                    // 由于之前已经旋转了，需要转回原来的数据
+                    // 预览相对于原数据可能有旋转
                     matrix.postRotate(Camera2Helper.CAMERA_ID_BACK.equals(openedCameraId) ? displayOrientation : -displayOrientation);
 
                     // 对于前置数据，镜像处理；若手动设置镜像预览，则镜像处理；若都有，则不需要镜像处理
