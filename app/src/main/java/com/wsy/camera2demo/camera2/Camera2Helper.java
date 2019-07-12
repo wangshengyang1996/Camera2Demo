@@ -411,12 +411,12 @@ public class Camera2Helper {
                 mCameraDevice.close();
                 mCameraDevice = null;
             }
-            if (camera2Listener != null) {
-                camera2Listener.onCameraClosed();
-            }
             if (null != mImageReader) {
                 mImageReader.close();
                 mImageReader = null;
+            }
+            if (camera2Listener != null) {
+                camera2Listener.onCameraClosed();
             }
         } catch (InterruptedException e) {
             if (camera2Listener != null) {
