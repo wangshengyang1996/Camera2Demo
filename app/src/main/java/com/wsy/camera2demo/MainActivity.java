@@ -217,7 +217,7 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
                     else if (y.length / u.length == 4) {
                         ImageUtil.yuv420ToYuv420sp(y, u, v, nv21, stride, previewSize.getHeight());
                     }
-                    YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, stride, previewSize.getHeight(), new int[]{stride, stride, stride});
+                    YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, stride, previewSize.getHeight(), null);
                     // ByteArrayOutputStream的close中其实没做任何操作，可不执行
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
