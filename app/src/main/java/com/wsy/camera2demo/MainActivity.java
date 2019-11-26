@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
     // 当前获取的帧数
     private int currentIndex = 0;
     // 处理的间隔帧
-    private static final int PROCESS_INTERVAL = 30;
+    private static final int PROCESS_INTERVAL = 1;  // set to 1 instead of 30 to get fluent preview
     // 线程池
     private ExecutorService imageProcessExecutor;
     // 需要的权限
@@ -283,5 +283,6 @@ public class MainActivity extends AppCompatActivity implements ViewTreeObserver.
         if (camera2Helper != null) {
             camera2Helper.switchCamera();
         }
+        nv21 = null;  // added to prevent OutOfBoundsException in arraycopy
     }
 }
